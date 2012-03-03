@@ -1,7 +1,6 @@
 # coding=utf-8
 
-#
-import os, sys
+import os, sys, traceback
 import gflags
 import httplib2
 import threading
@@ -41,17 +40,18 @@ class GCalendarUser():
 		self.flow = OAuth2WebServerFlow(
 		  client_id='1024985834463.apps.googleusercontent.com',
 		  client_secret='MCNVyWEAXaG9fCqXcUHWvUyC',
-		  #client_id='269567140900.apps.googleusercontent.com',
-		  #client_secret='_wF3RvNpRyyt2k9m4dPmjkLp',
+#		  client_id='269567140900.apps.googleusercontent.com',
+#		  client_secret='_wF3RvNpRyyt2k9m4dPmjkLp',
 		  scope='https://www.googleapis.com/auth/calendar',
 		  user_agent='vocalendar-sync/1.0.0',
-		  #user_agent='vocalendar-sync-sub/1.0.0',
-		  #approval_prompt='force'
-		  access_type='offline'
+#		  user_agent='vocalendar-sync-sub/1.0.0',
+		  approval_prompt='force'
+#		  access_type='offline'
 		  )
 		self.developerKey='AIzaSyDlk_D0N8F4mJIi1PvgC27jujdSAH5pJxA'
-		#self.developerKey='AIzaSyCDSY-tykDOmhIBj4ZdSxHf1VIq7k9yvZE'
+#		self.developerKey='AIzaSyCDSY-tykDOmhIBj4ZdSxHf1VIq7k9yvZE'
 		self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin/')
+		print self.authorize_url
 		#self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin/sub/')
 		self.storage = Storage( os.path.join(os.path.dirname(__file__), 'calendar.dat') )
 		self.credentials = self.storage.get()
@@ -95,15 +95,20 @@ class GCalendar():
 	def getName(self):
 		return self.calendar['summary']
 
-	def getEvents(self, **arg):
-		param = {
-				'calendarId': self.calendar['id'],
-				'timeMin': '1970-01-01T00:00:00Z',
-				'orderBy': 'updated'
-				}
-		param.update(arg)
-		events = self.service.events().list(**param).execute()
-		return events
+	# idがあるとダメなので同期には使えない
+	def create(self, event):
+		event.pop('id', None)
+		event.pop('organizer', None)
+		event['start']['timeZone']='Asia/Tokyo'
+		event['end']['timeZone']='Asia/Tokyo'
+
+		try:
+			self.service.events().insert(calendarId=self.calendar['id'], body=event).execute()
+			pass
+		except HttpError, e:
+			print e
+			pass
+			raise
 
 	def getEvent(self, eventid):
 		try:
@@ -119,6 +124,18 @@ class GCalendar():
 
 		return event
 
+	def getRecurringEvents(self, eventid):
+		try:
+			events = self.service.events().instances(calendarId=self.calendar['id'], eventId=eventid).execute()
+			pass
+		except HttpError, e:
+			# not found（対象無し）は無視
+			if e.resp.status == 404:
+				return None
+			else:
+				raise
+		return events
+
 	def delete(self, eventid):
 
 		try:
@@ -132,70 +149,57 @@ class GCalendar():
 	# import_なのはimportが予約後だから。
 	def import_(self, event):
 
-		# データを整える。 コメントアウト多数なのは試行錯誤の名残・・・。
-#		del event['etag']
-#		del event['id']
-#		del event['htmlLink']
-#		del event['created']
-#		del event['updated']
-#		del event['creator']
-		# importでは存在しているとエラー（正確にはコピーして持ってくると属性が足りない（Googleェ・・）ので削除してディフォルト値に。
-		event.pop('organizer', None)
-#		del event['iCalUID']
-#		if event.has_key('description'):
-#			del event['description']
-#		if event.has_key('transparency'):
-#			del event['transparency']
-		# 必須なのにコピーして持ってくると属性が足りない（Googleェ・・）
-		event['start']['timeZone']='Asia/Tokyo'
-		event['end']['timeZone']='Asia/Tokyo'
+		target = dict(event)
+		target.pop('id', None)
+		target.pop('organizer', None)
+		target['start']['timeZone']='Asia/Tokyo'
+		target['end']['timeZone']='Asia/Tokyo'
 
-		info = self.toString(event)
 		try:
-			# まずはidありでupdate
-			if 'id' in event:
-				execom = u'インポート(更新)'
-			else:
-				execom = u'インポート(新規)'
-			self.service.events().import_(calendarId=self.calendar['id'], body=event).execute()
-			pass
-			return execom + info
+			self.service.events().import_(calendarId=self.calendar['id'], body=target).execute()
+			return u'インポート:'
 		except HttpError, e:
 			# not found（対象無し） or Resource has been deleted（削除済み）は
 			# The requested identifier already exists.(ID重複) or Backend Error（謎） idを削除してinsert
 			#if e.resp.status == 404 or e.resp.status == 410 or e.resp.status == 409 or e.resp.status == 503:
-			if 'id' in event:
-				print event
-				event.pop('id', None)
-				return self.import_(event)
-			else:
-				try:
-					# insert
-					event.pop('iCalUID', None)
-					self.service.events().insert(calendarId=self.calendar['id'], body=event).execute()
-					return u'新規' + info
-				except HttpError, e:
-					print e
-					pass
+			print event
+			print e
+			pass
+			raise
 
-				raise
 
+	def getEvents(self, **arg):
+		param = {
+				'calendarId': self.calendar['id'],
+				'timeMin': '1970-01-01T00:00:00Z',
+				#'timeMax': '2039-12-31T00:00:00Z',
+				'orderBy': 'updated'
+				}
+		param.update(arg)
+		events = self.service.events().list(**param).execute()
+		return events
 
 	def getCount(self):
 		count = 0
 		html = u''
 		events = self.getEvents()
+		file = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
+		file.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数')
 		while events.has_key('items'):
 			count += len( events.get('items') )
 			for event in events.get('items'):
-				html += self.toString(event)
-				html += u'</br>'
+				file.write( ( self.toCsvString(event) + u'\n').encode('utf-8') )
 
 			page_token = events.get('nextPageToken')
 			if page_token:
 				events = self.getEvents(pageToken=page_token)
 			else:
 				break
+
+		html += u'</br>'
+		html += u"<a href='./alldata.csv' target='_brank'>データダウンロード</a>"
+		file.close()
+
 		return count, events['updated'], html
 
 	def deleteAll(self):
@@ -210,12 +214,8 @@ class GCalendar():
 			count += len( events.get('items') )
 
 			for event in events.get('items'):
-				eventdate = event.get('start').get('date')
-				if not event.get('start').has_key('date'):
-					eventdate = event.get('start').get('dateTime')
-				if not event.has_key('summary'):
-					event['summary']=u'(ブランク)'
-				html += eventdate + u':' + event.get('summary') + u'<br>'
+				html += self.toString(event)
+				html += u'</br>'
 				self.delete(event['id'])
 
 			page_token = events.get('nextPageToken')
@@ -237,54 +237,55 @@ class GCalendar():
 		minUpdateStr = minUpdate.strftime('%Y-%m-%dT%H:%M:%SZ')
 		print minUpdateStr
 
-		count = 0
-		html = u''
-		events = self.getEvents(updatedMin=minUpdateStr, showDeleted=True)
-		while events.has_key('items'):
-			count += len( events.get('items') )
-			for event in events.get('items'):
-				eventdate = event.get('start').get('date')
-				if not event.get('start').has_key('date'):
-					eventdate = event.get('start').get('dateTime')
-				if not event.has_key('summary'):
-					event['summary']=u'(ブランク)'
-				html += event.get('status') + u':'+ eventdate + u':' + event.get('summary') + u'<br>'
-				print event
-				if event.get('status') == 'cancelled':
-					dstCalendar.delete(event.get('id'))
-					continue
-
-				dstCalendar.import_(event)
-
-			page_token = events.get('nextPageToken')
-			if page_token:
-				events = self.getEvents(pageToken=page_token, updatedMin=minUpdateStr, showDeleted=True)
-			else:
-				break
+		count, html = self.copyTo(dstCalendar=dstCalendar, updatedMin=minUpdateStr, showDeleted=True)
 		return count, html
 
-	def copyTo(self, dstCalendar):
+	def copyTo(self, dstCalendar,  **fromConditions):
 
 		if dstCalendar.calendar['id'] == prohibitionId:
 			return 0, u'このカレンダーを同期先にできません'
 
 		count = 0
 		html = u''
-		events = self.getEvents()
+		events = self.getEvents(**fromConditions)
+#		file = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
 		while events.has_key('items'):
-			count += len( events.get('items') )
 			for event in events.get('items'):
+				count += 1
+				print count
+#				file.write( ( self.toCsvString(event) + u'\n').encode('utf-8') )
 
-				dstCalendar.import_(event)
+				if event.get('status') == 'cancelled':
+					dstCalendar.delete(event.get('id'))
+					html += u'削除:' + self.toString(event)
+					html += u'</br>'
+					continue
+
+				resultstr = dstCalendar.import_(event)
+				html += resultstr + self.toString(event)
+				html += u'</br>'
 
 			page_token = events.get('nextPageToken')
 			if page_token:
-				events = self.getEvents(pageToken=page_token)
+				param = {
+						'pageToken': page_token
+						}
+				param.update(fromConditions)
+				events = self.getEvents(**param)
 			else:
 				break
+
+#		html += u'</br>'
+#		html = u"<a href='./alldata.csv' target='_brank'>データダウンロード</a>"
+#		file.close()
+
 		return count, html
 
 	def toString(self, event):
+
+		if event.get('start') is None:
+			return u'詳細不明 id: ' + event.get('id')
+
 		eventdate = event.get('start').get('date')
 		if not event.get('start').has_key('date'):
 			eventdate = event.get('start').get('dateTime')
@@ -293,6 +294,40 @@ class GCalendar():
 			summary = u'(ブランク)'
 		return event.get('status') + u':' + event.get('updated') + u':'+ eventdate + u':' + summary
 
+	def toCsvString(self, event):
+		if event.get('start') is None:
+			return u'詳細なし id: ' + event.get('id')
+
+		startdate = event.get('start').get('date')
+		if not event.get('start').has_key('date'):
+			startdate = event.get('start').get('dateTime')
+
+		enddate = event.get('end').get('date')
+		if not event.get('end').has_key('date'):
+			enddate = event.get('end').get('dateTime')
+
+		summary = event.get('summary')
+		if summary is None:
+			summary = u'(ブランク)'
+
+		csv = u''
+		csv += startdate
+		csv += u'\t'
+		csv += enddate
+		csv += u'\t'
+		csv += event.get('id')
+		csv += u'\t'
+		csv += summary
+		csv += u'\t'
+		csv += event.get('creator').get('email')
+		csv += u'\t'
+		csv += event.get('created')
+		csv += u'\t'
+		csv += event.get('updated')
+		csv += u'\t'
+		csv += str(event.get('sequence'))
+
+		return csv
 
 
 def application(environ, start_response):
@@ -353,9 +388,10 @@ def application(environ, start_response):
 			response += u'最終更新日時(UTC)： ' + lastmodified
 			response += html
 	except Exception, e:
-		print e
+		exc_type, exc_value, exc_traceback = sys.exc_info()
+		traceback.extract_tb(exc_traceback)
 		response += str(e)
-	print response.encode('utf-8')
+
 	start_response('200 OK', [('Content-type', 'text/html')])
 	return buildUI(calendars, response)
 
@@ -380,7 +416,7 @@ def buildUI(calendars, *addHtmls):
 	html += u'''
 </select>
 <input type='submit' name='count' value='件数取得'>
-<h2>同期</h2>
+<h2>差分同期</h2>
 <p>同期先の最終更新日時（最後に同期orインポートした時刻）より1日前のデータから同期。</p>
 同期元<select name='syncsrcid'>
 '''
@@ -399,6 +435,7 @@ def buildUI(calendars, *addHtmls):
 	html += u'''
 </select>
 <input type='submit' name='sync' value='同期'>
+<!--
 <h2>全件削除（危険(；´Д`)） </h2>
 <select name='deleteid'>
 '''
@@ -410,7 +447,8 @@ def buildUI(calendars, *addHtmls):
 	html += u'''
 </select>
 <input type='submit' name='delete' value='全件削除'>
-<h2>コピー(未実装）</h2>
+-->
+<h2>全件同期</h2>
 コピー元<select name='copysrcid'>
 '''
 	for calendar in calendars:
@@ -435,5 +473,5 @@ def buildUI(calendars, *addHtmls):
 		html += addhtml
 
 	html += u'</html>'
-	print 'a-------------------------------'
+	print '----------------------'
 	return html.encode('utf-8')
