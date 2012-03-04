@@ -247,7 +247,11 @@ class GCalendar():
 
 		count = 0
 		html = u''
-		events = self.getEvents(**fromConditions)
+		param = {
+				'showDeleted': True
+				}
+		param.update(fromConditions)
+		events = self.getEvents(**param)
 #		file = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
 		while events.has_key('items'):
 			for event in events.get('items'):
@@ -267,10 +271,7 @@ class GCalendar():
 
 			page_token = events.get('nextPageToken')
 			if page_token:
-				param = {
-						'pageToken': page_token
-						}
-				param.update(fromConditions)
+				param['pageToken'] = page_token
 				events = self.getEvents(**param)
 			else:
 				break
