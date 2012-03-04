@@ -237,8 +237,7 @@ class GCalendar():
 		minUpdateStr = minUpdate.strftime('%Y-%m-%dT%H:%M:%SZ')
 		print minUpdateStr
 
-		count, html = self.copyTo(dstCalendar=dstCalendar, updatedMin=minUpdateStr, showDeleted=True)
-		return count, html
+		return self.copyTo(dstCalendar=dstCalendar, updatedMin=minUpdateStr, showDeleted=True)
 
 	def copyTo(self, dstCalendar,  **fromConditions):
 
@@ -246,6 +245,7 @@ class GCalendar():
 			return 0, u'このカレンダーを同期先にできません'
 
 		count = 0
+		delcount = 0
 		html = u''
 		param = {
 				'showDeleted': True
@@ -260,6 +260,7 @@ class GCalendar():
 #				file.write( ( self.toCsvString(event) + u'\n').encode('utf-8') )
 
 				if event.get('status') == 'cancelled':
+					delcount += 1
 					dstCalendar.delete(event.get('id'))
 					html += u'削除:' + self.toString(event)
 					html += u'</br>'
@@ -280,7 +281,7 @@ class GCalendar():
 #		html = u"<a href='./alldata.csv' target='_brank'>データダウンロード</a>"
 #		file.close()
 
-		return count, html
+		return count, delcount, html
 
 	def toString(self, event):
 
@@ -371,21 +372,22 @@ def application(environ, start_response):
 			response += html
 		if request.params.has_key('sync'):
 			calendar = service.getCalendar( request.params.get('syncsrcid') )
-			count, html = calendar.syncTo( service.getCalendar(request.params.get('syncdstid')) )
-			response += u'同期件数 ' + str(count) + u'<br>'
+			count, delcount, html = calendar.syncTo( service.getCalendar(request.params.get('syncdstid')) )
+			response += u'同期件数 ' + str(count) + u' 件 '
+			response += u'(内削除データ ' + str(delcount) + u' 件)<br>'
 			response += u'<p>同期データ</p>'
 			response += html
 		if request.params.has_key('insert'):
 			calendar = service.getCalendar( request.params.get('copysrcid') )
-			count, html = calendar.copyTo( service.getCalendar(request.params.get('copydstid')) )
-			response += u'コピー件数 ' + str(count) + u'<br>'
-			response += u'<p>コピーデータ</p>'
+			count, delcount, html = calendar.copyTo( service.getCalendar(request.params.get('copydstid')) )
+			response += u'コピー件数 ' + str(count) + u' 件 '
+			response += u'(内削除データ ' + str(delcount) + u' 件)<br>'
 			response += html
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
 			count, lastmodified, html = calendar.getCount()
 			response += calendar.getName() + u'<br>'
-			response += u'件数 ' + str(count) + u'<br>'
+			response += u'件数 ' + str(count) + u' 件<br>'
 			response += u'最終更新日時(UTC)： ' + lastmodified
 			response += html
 	except Exception, e:
