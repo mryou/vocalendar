@@ -184,7 +184,7 @@ class GCalendar():
 		html = u''
 		events = self.getEvents()
 		file = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
-		file.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数')
+		file.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\n')
 		while events.has_key('items'):
 			count += len( events.get('items') )
 			for event in events.get('items'):
