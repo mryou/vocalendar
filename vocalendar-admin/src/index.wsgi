@@ -9,7 +9,7 @@ import urllib2
 
 from htmlentitydefs import codepoint2name
 
-from gapiClient import *
+from gCalClient import *
 
 prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 
