@@ -4,6 +4,7 @@ Created on 2012/03/06
 @author: tonomura
 '''
 import cgi
+from datetime import datetime
 
 class RequestData():
     '''
@@ -29,3 +30,20 @@ class RequestData():
             self.params[key] = value
         print self.method
         print self.params
+
+
+class DateUtil():
+
+    def __init__(self):
+        pass
+
+    def confStr2DateTime(self, dateStr):
+        try:
+            return datetime.strptime(dateStr, '%Y-%m-%dT%H:%M:%S')
+        except ValueError, e:
+            pass
+
+        try:
+            return datetime.strptime(dateStr, '%Y-%m-%d')
+        except ValueError, e:
+            pass

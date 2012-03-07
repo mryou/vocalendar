@@ -17,20 +17,20 @@ def application(environ, start_response):
 
 	print '----------- start ----------'
 	request = RequestData(environ)
-	user = GCalendarAuth(environ)
+	auth = GCalendarAuth(environ)
 
-	if not user.isVailedCredentials() or request.method == 'GET':
+	if not auth.isVailedCredentials() or request.method == 'GET':
 		print 'Credentials is None'
 		if request.method == 'GET':
 			if len(request.query) == 0:
-				start_response('301 Moved', [('Location', user.authorize_url)])
+				start_response('301 Moved', [('Location', auth.authorize_url)])
 				return ['',]
 			else:
-				user.getAccessToken(request)
+				auth.getAccessToken(request)
 
 	try:
-		user.authorize()
-		service = GCalendarService(user)
+		auth.authorize()
+		service = GCalendarService(auth, prohibitionId)
 		calendars = service.getCalendars()
 	except Exception, e:
 		print e
@@ -112,7 +112,7 @@ def buildUI(calendars, *addHtmls):
 同期先<select name='syncdstid'>
 '''
 	for calendar in calendars:
-		if calendar['id'] == prohibitionId:
+		if not calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
@@ -124,7 +124,7 @@ def buildUI(calendars, *addHtmls):
 <select name='deleteid'>
 '''
 	for calendar in calendars:
-		if calendar['id'] == prohibitionId:
+		if not calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
@@ -143,7 +143,7 @@ def buildUI(calendars, *addHtmls):
 コピー先<select name='copydstid'>
 '''
 	for calendar in calendars:
-		if calendar['id'] == prohibitionId:
+		if not calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 

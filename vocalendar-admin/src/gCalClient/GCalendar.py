@@ -9,24 +9,26 @@ from datetime import datetime, timedelta
 from apiclient.discovery import build
 from apiclient.errors import HttpError
 
-prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
-
 class GCalendarService():
 
-    def __init__( self, GCalendarUser ):
+    def __init__( self, GCalendarAuth, prohibitionId='' ):
 
-        self._user = GCalendarUser
-        self.service = build(serviceName='calendar', version='v3', http=self._user.http, developerKey=self._user.developerKey)
-        self.prohibitionId = ''
+        self._auth = GCalendarAuth
+        self.service = build(serviceName='calendar', version='v3', http=self._auth.http, developerKey=self._auth.developerKey)
+        self.prohibitionId = prohibitionId
 
     def getCalendars(self):
-        result = self.service.calendarList().list().execute()
-        if result.has_key('items'):
-            return result['items']
+        calendars = self.service.calendarList().list().execute()
+        if 'items' in calendars:
+            for calendar in calendars.get('items'):
+                calendar['editable'] = calendar['id'] == self.prohibitionId
+            return calendars['items']
         return []
 
     def getCalendar(self, calId):
-        return GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
+        calendar = GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
+        calendar['editable'] = calendar['id'] != self.prohibitionId
+        return calendar
 
 
 class GCalendar():
@@ -38,6 +40,9 @@ class GCalendar():
     def getName(self):
         return self.calendar['summary']
 
+    def getId(self):
+        return self.calendar['id']
+
     # idがあるとダメなので同期には使えない
     def create(self, event):
         event.pop('id', None)
@@ -46,7 +51,7 @@ class GCalendar():
         event['end']['timeZone']='Asia/Tokyo'
 
         try:
-            self.service.events().insert(calendarId=self.calendar['id'], body=event).execute()
+            self.service.events().insert(calendarId=self.getId(), body=event).execute()
             pass
         except HttpError, e:
             print e
@@ -55,7 +60,7 @@ class GCalendar():
 
     def getEvent(self, eventid):
         try:
-            event = self.service.events().get(calendarId=self.calendar['id'], eventId=eventid).execute()
+            event = self.service.events().get(calendarId=self.getId(), eventId=eventid).execute()
             # わざわざpassを入れているのはdebugで↑をコメントアウトしたときにエラーにならないように(^_^;)
             pass
         except HttpError, e:
@@ -69,7 +74,7 @@ class GCalendar():
 
     def getRecurringEvents(self, eventid):
         try:
-            events = self.service.events().instances(calendarId=self.calendar['id'], eventId=eventid).execute()
+            events = self.service.events().instances(calendarId=self.getId(), eventId=eventid).execute()
             pass
         except HttpError, e:
             # not found（対象無し）は無視
@@ -82,7 +87,7 @@ class GCalendar():
     def delete(self, eventid):
 
         try:
-            self.service.events().delete(calendarId=self.calendar['id'], eventId=eventid).execute()
+            self.service.events().delete(calendarId=self.getId(), eventId=eventid).execute()
             pass
         except HttpError, e:
             # not found（対象無し） or Resource has been deleted（削除済み）は無視
@@ -99,7 +104,7 @@ class GCalendar():
         target['end']['timeZone']='Asia/Tokyo'
 
         try:
-            self.service.events().import_(calendarId=self.calendar['id'], body=target).execute()
+            self.service.events().import_(calendarId=self.getId(), body=target).execute()
             return u'インポート:'
         except HttpError, e:
             # not found（対象無し） or Resource has been deleted（削除済み）は
@@ -147,7 +152,7 @@ class GCalendar():
 
     def deleteAll(self):
 
-        if self.calendar['id'] == prohibitionId:
+        if not self.calendar.get('editable'):
             return 0, u'このカレンダーは削除できません'
 
         count = 0
@@ -170,7 +175,7 @@ class GCalendar():
 
     def syncTo(self, dstCalendar):
 
-        if dstCalendar.calendar['id'] == prohibitionId:
+        if not self.calendar.get('editable'):
             return 0, u'このカレンダーを同期先にできません'
 
         dstEvents = dstCalendar.getEvents()
@@ -184,7 +189,7 @@ class GCalendar():
 
     def copyTo(self, dstCalendar,  **fromConditions):
 
-        if dstCalendar.calendar['id'] == prohibitionId:
+        if not self.calendar.get('editable'):
             return 0, u'このカレンダーを同期先にできません'
 
         count = 0
@@ -273,3 +278,57 @@ class GCalendar():
         csv += str(event.get('sequence'))
 
         return csv
+
+class GCalEvent():
+
+    def __init__( self, event ):
+        self.event = event
+
+    def toString(self):
+
+        if self.event.get('start') is None:
+            return u'詳細不明 id: ' + self.event.get('id')
+
+        eventdate = self.event.get('start').get('date')
+        if not self.event.get('start').has_key('date'):
+            eventdate = self.event.get('start').get('dateTime')
+        summary = self.event.get('summary')
+        if summary is None:
+            summary = u'(ブランク)'
+        return self.event.get('status') + u':' + self.event.get('updated') + u':'+ eventdate + u':' + summary
+
+    def toCsvString(self):
+        if self.event.get('start') is None:
+            return u'詳細なし id: ' + self.event.get('id')
+
+        startdate = self.event.get('start').get('date')
+        if not self.event.get('start').has_key('date'):
+            startdate = self.event.get('start').get('dateTime')
+
+        enddate = self.event.get('end').get('date')
+        if not self.event.get('end').has_key('date'):
+            enddate = self.event.get('end').get('dateTime')
+
+        summary = self.event.get('summary')
+        if summary is None:
+            summary = u'(ブランク)'
+
+        csv = u''
+        csv += startdate
+        csv += u'\t'
+        csv += enddate
+        csv += u'\t'
+        csv += self.event.get('id')
+        csv += u'\t'
+        csv += summary
+        csv += u'\t'
+        csv += self.event.get('creator').get('email')
+        csv += u'\t'
+        csv += self.event.get('created')
+        csv += u'\t'
+        csv += self.event.get('updated')
+        csv += u'\t'
+        csv += str(self.event.get('sequence'))
+
+        return csv
+
