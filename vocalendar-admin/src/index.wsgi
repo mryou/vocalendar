@@ -10,7 +10,10 @@ import urllib2
 from htmlentitydefs import codepoint2name
 
 from gCalClient import *
+import logging
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 
 def application(environ, start_response):
