@@ -41,12 +41,13 @@ class GCalendarAuth():
         return self.credentials is None or self.credentials.invalid == True
 
     def getAccessToken(self, request):
-        self.credentials = self.flow.step2_exchange(request.params['code'])
-        self.save()
+        credential = self.flow.step2_exchange(request.params['code'])
+        self.save(credential)
+        self.credentials = credential
 
-    def save(self):
-        self.credentials.set_store(self.storage)
-        self.storage.put(self.credentials)
+    def save(self, credential):
+        self.storage.put(credential)
+        credential.set_store(self.storage)
 
     def authorize(self):
         self.http = self.credentials.authorize(httplib2.Http())
