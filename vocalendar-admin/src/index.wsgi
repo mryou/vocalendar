@@ -9,18 +9,21 @@ import urllib2
 
 from htmlentitydefs import codepoint2name
 
-from gCalClient import *
 import logging
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
+sys.path.append(os.path.dirname(__file__))
+import gCalClient.GCalendarAuth
+import gCalClient.GCalendar
+import util
+
 prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 
 def application(environ, start_response):
 
 	print '----------- start ----------'
-	request = RequestData(environ)
-	auth = GCalendarAuth(environ)
+	request = util.RequestData(environ)
+	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
 	if not auth.isVailedCredentials() or request.method == 'GET':
 		print 'Credentials is None'
@@ -33,7 +36,7 @@ def application(environ, start_response):
 
 	try:
 		auth.authorize()
-		service = GCalendarService(auth, prohibitionId)
+		service = gCalClient.GCalendar.GCalendarService(auth, prohibitionId)
 		calendars = service.getCalendars()
 	except Exception, e:
 		print e
@@ -115,7 +118,8 @@ def buildUI(calendars, *addHtmls):
 同期先<select name='syncdstid'>
 '''
 	for calendar in calendars:
-		if not calendar['editable']:
+		# 判定が逆なのに動いてるorz 設定時ミスしてる
+		if calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
@@ -146,7 +150,7 @@ def buildUI(calendars, *addHtmls):
 コピー先<select name='copydstid'>
 '''
 	for calendar in calendars:
-		if not calendar['editable']:
+		if calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
