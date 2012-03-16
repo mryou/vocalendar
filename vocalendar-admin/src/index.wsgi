@@ -72,7 +72,7 @@ def application(environ, start_response):
 			response += html
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
-			count, lastmodified, html = calendar.getCount()
+			count, lastmodified, html = calendar.getCount( request.params.get('description') )
 			response += calendar.getName() + u'<br>'
 			response += u'件数 ' + str(count) + u' 件<br>'
 			response += u'最終更新日時(UTC)： ' + lastmodified
@@ -102,6 +102,7 @@ def buildUI(calendars, *addHtmls):
 '''
 	for calendar in calendars:
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
+		html += u"<input type='checkbox' name='description' /> DLデータに詳細を含める</br>"
 
 	html += u'''
 </select>

@@ -128,16 +128,16 @@ class GCalendar():
         events = self.service.events().list(**param).execute()
         return events
 
-    def getCount(self):
+    def getCount(self, description=False):
         count = 0
         html = u''
         events = self.getEvents()
         datafile = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
-        datafile.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\n')
+        datafile.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
         while events.has_key('items'):
             count += len( events.get('items') )
             for event in events.get('items'):
-                datafile.write( ( self.toCsvString(event) + u'\n').encode('utf-8') )
+                datafile.write( ( self.toCsvString(event, description) + u'\n').encode('utf-8') )
 
             page_token = events.get('nextPageToken')
             if page_token:
@@ -245,7 +245,7 @@ class GCalendar():
             summary = u'(ブランク)'
         return event.get('status') + u':' + event.get('updated') + u':'+ eventdate + u':' + summary
 
-    def toCsvString(self, event):
+    def toCsvString(self, event, description=False):
         if event.get('start') is None:
             return u'詳細なし id: ' + event.get('id')
 
@@ -277,6 +277,12 @@ class GCalendar():
         csv += event.get('updated')
         csv += u'\t'
         csv += str(event.get('sequence'))
+
+        if description:
+            desctemp = event.get('description')
+            if desctemp is not None:
+                desctemp = desctemp.replace('\n', ' ')
+                csv += desctemp
 
         return csv
 
