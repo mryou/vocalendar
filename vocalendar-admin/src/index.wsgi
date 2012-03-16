@@ -119,7 +119,7 @@ def buildUI(calendars, *addHtmls):
 '''
 	for calendar in calendars:
 		# 判定が逆なのに動いてるorz 設定時ミスしてる
-		if calendar['editable']:
+		if not calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
@@ -150,7 +150,7 @@ def buildUI(calendars, *addHtmls):
 コピー先<select name='copydstid'>
 '''
 	for calendar in calendars:
-		if calendar['editable']:
+		if not calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 

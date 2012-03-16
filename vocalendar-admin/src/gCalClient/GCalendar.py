@@ -22,7 +22,7 @@ class GCalendarService():
         calendars = self.service.calendarList().list().execute()
         if 'items' in calendars:
             for calendar in calendars.get('items'):
-                calendar['editable'] = calendar['id'] == self.prohibitionId
+                calendar['editable'] = calendar['id'] != self.prohibitionId
             return calendars['items']
         return []
 
