@@ -10,7 +10,7 @@ import urllib2
 from htmlentitydefs import codepoint2name
 
 import logging
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('index.wsgi')
 logger.setLevel(logging.DEBUG)
 sys.path.append(os.path.dirname(__file__))
 import gCalClient.GCalendarAuth
@@ -21,7 +21,7 @@ prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 
 def application(environ, start_response):
 
-	print '----------- start ----------'
+	logger.debug( u'----------- start ----------' )
 	request = util.RequestData(environ)
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
@@ -81,6 +81,7 @@ def application(environ, start_response):
 		exc_type, exc_value, exc_traceback = sys.exc_info()
 		traceback.extract_tb(exc_traceback)
 		response += str(e)
+		raise
 
 	start_response('200 OK', [('Content-type', 'text/html')])
 	return buildUI(calendars, response)
@@ -102,10 +103,10 @@ def buildUI(calendars, *addHtmls):
 '''
 	for calendar in calendars:
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
-		html += u"<input type='checkbox' name='description' /> DLデータに詳細を含める</br>"
 
 	html += u'''
 </select>
+<input type='checkbox' name='description' value='True' /> DLデータに詳細を含める</br>
 <input type='submit' name='count' value='件数取得'>
 <h2>差分同期</h2>
 <p>同期先の最終更新日時（最後に同期orインポートした時刻）より1日前のデータから同期。</p>
@@ -119,7 +120,6 @@ def buildUI(calendars, *addHtmls):
 同期先<select name='syncdstid'>
 '''
 	for calendar in calendars:
-		# 判定が逆なのに動いてるorz 設定時ミスしてる
 		if not calendar['editable']:
 			continue
 		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"

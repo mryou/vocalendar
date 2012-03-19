@@ -6,6 +6,9 @@ Created on 2012/03/06
 
 '''
 import os
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG )
 from datetime import datetime, timedelta
 from apiclient.discovery import build
 from apiclient.errors import HttpError
@@ -22,14 +25,14 @@ class GCalendarService():
         calendars = self.service.calendarList().list().execute()
         if 'items' in calendars:
             for calendar in calendars.get('items'):
-                calendar['editable'] = calendar['id'] != self.prohibitionId
+                calendar['editable'] = ( calendar.get('id') != self.prohibitionId )
             return calendars['items']
         return []
 
     def getCalendar(self, calId):
-        calendar = GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
-        calendar['editable'] = calendar['id'] != self.prohibitionId
-        return calendar
+        gcalendar = GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
+        gcalendar.calendar['editable'] = ( gcalendar.getId() != self.prohibitionId )
+        return gcalendar
 
 
 class GCalendar():
@@ -129,10 +132,18 @@ class GCalendar():
         return events
 
     def getCount(self, description=False):
+	logger.debug(u'件数カウント'.encode('utf-8'))
+	logger.debug(description)
         count = 0
         html = u''
         events = self.getEvents()
-        datafile = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
+
+	filedir = os.path.dirname(__file__)
+	while not os.path.exists( os.path.join( filedir, 'index.wsgi' ) ):
+		filedir = os.path.split( filedir )[0]
+
+
+        datafile = open( os.path.join( filedir , 'alldata.csv'), 'w' )
         datafile.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
         while events.has_key('items'):
             count += len( events.get('items') )
@@ -282,6 +293,8 @@ class GCalendar():
             desctemp = event.get('description')
             if desctemp is not None:
                 desctemp = desctemp.replace('\n', ' ')
+		desctemp = desctemp.replace('\t', ' ')
+		csv += u'\t'
                 csv += desctemp
 
         return csv
