@@ -187,8 +187,8 @@ class GCalendar():
 
     def syncTo(self, dstCalendar):
 
-        if not self.calendar.get('editable'):
-            return 0, u'このカレンダーを同期先にできません'
+        if not dstCalendar.calendar.get('editable'):
+            return 0, 0, u'このカレンダーを同期先にできません'
 
         dstEvents = dstCalendar.getEvents()
         lastModifiedStr = dstEvents.get('updated').split( '.' )[0].split('Z')[0]
@@ -199,10 +199,10 @@ class GCalendar():
 
         return self.copyTo(dstCalendar=dstCalendar, updatedMin=minUpdateStr, showDeleted=True)
 
-    def copyTo(self, dstCalendar,  **fromConditions):
+    def copyTo(self, dstCalendar, **fromConditions):
 
-        if not self.calendar.get('editable'):
-            return 0, u'このカレンダーを同期先にできません'
+        if not dstCalendar.calendar.get('editable'):
+            return 0, 0, u'このカレンダーを同期先にできません'
 
         count = 0
         delcount = 0
@@ -216,7 +216,6 @@ class GCalendar():
         while events.has_key('items'):
             for event in events.get('items'):
                 count += 1
-                print count
 #                file.write( ( self.toCsvString(event) + u'\n').encode('utf-8') )
 
                 if event.get('status') == 'cancelled':

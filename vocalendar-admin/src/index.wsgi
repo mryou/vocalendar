@@ -66,7 +66,7 @@ def application(environ, start_response):
 			response += html
 		if request.params.has_key('insert'):
 			calendar = service.getCalendar( request.params.get('copysrcid') )
-			count, delcount, html = calendar.copyTo( service.getCalendar(request.params.get('copydstid')) )
+			count, delcount, html = calendar.copyTo( dstCalendar=service.getCalendar(request.params.get('copydstid')))
 			response += u'コピー件数 ' + str(count) + u' 件 '
 			response += u'(内削除データ ' + str(delcount) + u' 件)<br>'
 			response += html
