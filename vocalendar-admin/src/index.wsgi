@@ -79,10 +79,12 @@ def application(environ, start_response):
 		response += str(e)
 		raise
 
-	start_response('200 OK', [('Content-type', 'text/html')])
-	return buildUI(calendars, response)
+	eventColors = service.getCalendar(prohibitionId).getEventColor()
 
-def buildUI(calendars, *addHtmls):
+	start_response('200 OK', [('Content-type', 'text/html')])
+	return buildUI(calendars, eventColors,response)
+
+def buildUI(calendars, eventColors, *addHtmls):
 
 	html = u'''
 <!DOCTYPE html>
@@ -124,6 +126,22 @@ def buildUI(calendars, *addHtmls):
 </select>
 <input type='checkbox' name='syncAllData' value='True' /> 差分ではなく全件同期する</br>
 <input type='submit' name='sync' value='同期'>
+
+<h2>カラー変更</h2>
+対象<select name='coldstid'>
+'''
+	for calendar in calendars:
+		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
+
+	html += u'''
+</select>
+'''
+	for color in eventColors:
+		html += u"<input type='checkbox' name='color' value='" + color['background'] +u" />"
+
+
+	html += u'''
+<input type='submit' name='chColor' value='変更'>
 </form>
 <h2>結果</h2>
 '''

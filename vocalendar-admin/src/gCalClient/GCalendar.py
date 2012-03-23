@@ -235,6 +235,10 @@ class GCalendar():
 
         return count, delcount, html
 
+    def getEventColor(self ):
+        result = self.service.colors().get()
+        return result.get('event')
+
     def toString(self, event):
 
         if event.get('start') is None:
