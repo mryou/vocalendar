@@ -57,19 +57,15 @@ def application(environ, start_response):
 			response += u'削除件数 ' + str(count) + u'<br>'
 			response += u'<p>削除データ</p>'
 			response += html
+
 		if request.params.has_key('sync'):
 			calendar = service.getCalendar( request.params.get('syncsrcid') )
-			count, delcount, html = calendar.syncTo( service.getCalendar(request.params.get('syncdstid')) )
+			count, delcount, html = calendar.syncTo( service.getCalendar(request.params.get('syncdstid')), request.params.get('syncAllData') )
 			response += u'同期件数 ' + str(count) + u' 件 '
 			response += u'(内削除データ ' + str(delcount) + u' 件)<br>'
 			response += u'<p>同期データ</p>'
 			response += html
-		if request.params.has_key('insert'):
-			calendar = service.getCalendar( request.params.get('copysrcid') )
-			count, delcount, html = calendar.copyTo( dstCalendar=service.getCalendar(request.params.get('copydstid')))
-			response += u'コピー件数 ' + str(count) + u' 件 '
-			response += u'(内削除データ ' + str(delcount) + u' 件)<br>'
-			response += html
+
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
 			count, lastmodified, html = calendar.getCount( request.params.get('description') )
@@ -126,38 +122,8 @@ def buildUI(calendars, *addHtmls):
 
 	html += u'''
 </select>
+<input type='checkbox' name='syncAllData' value='True' /> 差分ではなく全件同期する</br>
 <input type='submit' name='sync' value='同期'>
-<!--
-<h2>全件削除（危険(；´Д`)） </h2>
-<select name='deleteid'>
-'''
-	for calendar in calendars:
-		if not calendar['editable']:
-			continue
-		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
-
-	html += u'''
-</select>
-<input type='submit' name='delete' value='全件削除'>
--->
-<h2>全件同期</h2>
-コピー元<select name='copysrcid'>
-'''
-	for calendar in calendars:
-		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
-
-	html += u'''
-</select>
-コピー先<select name='copydstid'>
-'''
-	for calendar in calendars:
-		if not calendar['editable']:
-			continue
-		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
-
-	html += u'''
-</select>
-<input type='submit' name='insert' value='コピー'>
 </form>
 <h2>結果</h2>
 '''

@@ -8,7 +8,6 @@ Created on 2012/03/06
 import os
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG )
 from datetime import datetime, timedelta
 from apiclient.discovery import build
 from apiclient.errors import HttpError
@@ -132,23 +131,23 @@ class GCalendar():
         return events
 
     def getCount(self, description=False):
-	logger.debug(u'件数カウント'.encode('utf-8'))
-	logger.debug(description)
+        logger.debug(u'件数カウント'.encode('utf-8'))
+        logger.debug(description)
         count = 0
         html = u''
         events = self.getEvents()
 
-	filedir = os.path.dirname(__file__)
-	while not os.path.exists( os.path.join( filedir, 'index.wsgi' ) ):
-		filedir = os.path.split( filedir )[0]
+        filedir = os.path.dirname(__file__)
+        while not os.path.exists( os.path.join( filedir, 'index.wsgi' ) ):
+            filedir = os.path.split( filedir )[0]
 
-
-        datafile = open( os.path.join( filedir , 'alldata.csv'), 'w' )
-        datafile.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
+        datafilename = self.getId() + u'.csv'
+        datafile = open( os.path.join( filedir , datafilename), 'w' )
+        datafile.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細')
         while events.has_key('items'):
             count += len( events.get('items') )
             for event in events.get('items'):
-                datafile.write( ( self.toCsvString(event, description) + u'\n').encode('utf-8') )
+                datafile.writelines( self.toCsvString(event, description).encode('utf-8') )
 
             page_token = events.get('nextPageToken')
             if page_token:
@@ -157,8 +156,12 @@ class GCalendar():
                 break
 
         html += u'</br>'
-        html += u"<a href='./alldata.csv' target='_brank'>データダウンロード</a>"
+        html += u"<a href='./" + datafilename + "' target='_brank'>データダウンロード</a>"
         datafile.close()
+
+        countfile = open( os.path.join( filedir , self.getId() + '.txt'), 'w' )
+        countfile.writelines(count)
+        countfile.close()
 
         return count, events['updated'], html
 
@@ -185,24 +188,7 @@ class GCalendar():
                 break
         return count, html
 
-    def syncTo(self, dstCalendar):
-
-        if not dstCalendar.calendar.get('editable'):
-            return 0, 0, u'このカレンダーを同期先にできません'
-
-        dstEvents = dstCalendar.getEvents()
-        lastModifiedStr = dstEvents.get('updated').split( '.' )[0].split('Z')[0]
-        lastModified = datetime.strptime(lastModifiedStr, '%Y-%m-%dT%H:%M:%S')
-        minUpdate = lastModified - timedelta(days=1)
-        minUpdateStr = minUpdate.strftime('%Y-%m-%dT%H:%M:%SZ')
-        print minUpdateStr
-
-        return self.copyTo(dstCalendar=dstCalendar, updatedMin=minUpdateStr, showDeleted=True)
-
-    def copyTo(self, dstCalendar, **fromConditions):
-
-        if not dstCalendar.calendar.get('editable'):
-            return 0, 0, u'このカレンダーを同期先にできません'
+    def syncTo(self, dstCalendar, syncAllData=False):
 
         count = 0
         delcount = 0
@@ -210,7 +196,14 @@ class GCalendar():
         param = {
                 'showDeleted': True
                 }
-        param.update(fromConditions)
+        if not syncAllData:
+            dstEvents = dstCalendar.getEvents()
+            lastModifiedStr = dstEvents.get('updated').split( '.' )[0].split('Z')[0]
+            lastModified = datetime.strptime(lastModifiedStr, '%Y-%m-%dT%H:%M:%S')
+            minUpdate = lastModified - timedelta(days=1)
+            minUpdateStr = minUpdate.strftime('%Y-%m-%dT%H:%M:%SZ')
+            param['updatedMin'] = minUpdateStr
+
         events = self.getEvents(**param)
 #        file = open( os.path.join(os.path.dirname(__file__) , 'alldata.csv'), 'w' )
         while events.has_key('items'):
@@ -292,8 +285,8 @@ class GCalendar():
             desctemp = event.get('description')
             if desctemp is not None:
                 desctemp = desctemp.replace('\n', ' ')
-		desctemp = desctemp.replace('\t', ' ')
-		csv += u'\t'
+                desctemp = desctemp.replace('\t', ' ')
+                csv += u'\t'
                 csv += desctemp
 
         return csv
