@@ -2,7 +2,7 @@
 '''
 Created on 2012/03/06
 
-@author: tonomura
+@author: mryou
 
 '''
 import os
