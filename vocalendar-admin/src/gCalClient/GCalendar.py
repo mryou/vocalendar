@@ -29,6 +29,7 @@ class GCalendarService():
         return []
 
     def getCalendar(self, calId):
+        logger.debug(calId)
         gcalendar = GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
         gcalendar.calendar['editable'] = ( gcalendar.getId() != self.prohibitionId )
         return gcalendar
@@ -143,11 +144,12 @@ class GCalendar():
 
         datafilename = self.getId() + u'.csv'
         datafile = open( os.path.join( filedir , datafilename), 'w' )
-        datafile.writelines('開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細')
+        datafile.writelines(u'開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
         while events.has_key('items'):
             count += len( events.get('items') )
             for event in events.get('items'):
                 datafile.writelines( self.toCsvString(event, description).encode('utf-8') )
+                datafile.writelines( u'\n' )
 
             page_token = events.get('nextPageToken')
             if page_token:
@@ -160,7 +162,7 @@ class GCalendar():
         datafile.close()
 
         countfile = open( os.path.join( filedir , self.getId() + '.txt'), 'w' )
-        countfile.writelines(count)
+        countfile.writelines(str(count))
         countfile.close()
 
         return count, events['updated'], html
@@ -236,7 +238,7 @@ class GCalendar():
         return count, delcount, html
 
     def getEventColor(self ):
-        result = self.service.colors().get()
+        result = self.service.colors().get().execute()
         return result.get('event')
 
     def toString(self, event):
@@ -292,6 +294,8 @@ class GCalendar():
                 desctemp = desctemp.replace('\t', ' ')
                 csv += u'\t'
                 csv += desctemp
+
+
 
         return csv
 

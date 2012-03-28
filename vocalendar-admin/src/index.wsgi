@@ -25,7 +25,7 @@ def application(environ, start_response):
 	request = util.RequestData(environ)
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
-	if not auth.isVailedCredentials() or request.method == 'GET':
+	if not auth.isVailedCredentials():# or request.method == 'GET':
 		print 'Credentials is None'
 		if request.method == 'GET':
 			if len(request.query) == 0:
@@ -38,15 +38,17 @@ def application(environ, start_response):
 		auth.authorize()
 		service = gCalClient.GCalendar.GCalendarService(auth, prohibitionId)
 		calendars = service.getCalendars()
+		targetCalendar = service.getCalendar(prohibitionId)
+		eventColors = targetCalendar.getEventColor()
 	except Exception, e:
 		print e
 		start_response('200 OK', [('Content-type', 'text/html')])
-		return buildUI([], str(e).replace('<','').replace('>','') )
+		return buildUI([], {},str(e).replace('<','').replace('>','') )
 
 
 	if request.method == 'GET':
 		start_response('200 OK', [('Content-type', 'text/html')])
-		return buildUI(calendars)
+		return buildUI(calendars, eventColors)
 
 	response = u''
 	try:
@@ -79,7 +81,6 @@ def application(environ, start_response):
 		response += str(e)
 		raise
 
-	eventColors = service.getCalendar(prohibitionId).getEventColor()
 
 	start_response('200 OK', [('Content-type', 'text/html')])
 	return buildUI(calendars, eventColors,response)
@@ -135,9 +136,10 @@ def buildUI(calendars, eventColors, *addHtmls):
 
 	html += u'''
 </select>
+検索文字列<input type='text' name='searchstr' />
 '''
-	for color in eventColors:
-		html += u"<input type='checkbox' name='color' value='" + color['background'] +u" />"
+	for id, color in eventColors.iteritems():
+		html += u"<input type='radio' name='color' value='" + id + u"' /><span style='color:" + color['background'] + u"'>■</span>"
 
 
 	html += u'''
