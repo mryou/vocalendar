@@ -59,7 +59,6 @@ class GCalendar():
             pass
         except HttpError, e:
             print e
-            pass
             raise
 
     def getEvent(self, eventid):
@@ -87,6 +86,14 @@ class GCalendar():
             else:
                 raise
         return events
+
+    def update(self, event):
+        try:
+            self.service.events().update(calendarId=self.getId(), eventId=event.get('id'), body=event).execute()
+            pass
+        except HttpError, e:
+            print e
+            raise
 
     def delete(self, eventid):
 
@@ -241,6 +248,35 @@ class GCalendar():
         result = self.service.colors().get().execute()
         return result.get('event')
 
+    def changeEventColor( self, colSearchStr, colorid ):
+
+        count = 0
+        html = u''
+        param = {}
+
+        events = self.getEvents(**param)
+
+        while events.has_key('items'):
+            for event in events.get('items'):
+
+                if colSearchStr in event.get('summary'):
+                    count += 1
+                    event['colorId'] = colorid
+                    self.update(event)
+                    html += u'変更:' + self.toString(event)
+                    html += u'</br>'
+                    continue
+
+            page_token = events.get('nextPageToken')
+            if page_token:
+                param['pageToken'] = page_token
+                events = self.getEvents(**param)
+            else:
+                break
+
+        return count, html
+
+
     def toString(self, event):
 
         if event.get('start') is None:
@@ -294,8 +330,6 @@ class GCalendar():
                 desctemp = desctemp.replace('\t', ' ')
                 csv += u'\t'
                 csv += desctemp
-
-
 
         return csv
 

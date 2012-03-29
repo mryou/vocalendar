@@ -5,6 +5,10 @@ Created on 2012/03/06
 @author: mryou
 '''
 import cgi
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 from datetime import datetime
 
 class RequestData():
@@ -29,8 +33,8 @@ class RequestData():
         for param in self.query:
             key, value = param
             self.params[key] = value
-        print self.method
-        print self.params
+        logger.debug(self.method)
+        logger.debug(self.params)
 
 
 class DateUtil():

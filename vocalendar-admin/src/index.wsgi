@@ -26,7 +26,6 @@ def application(environ, start_response):
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
 	if not auth.isVailedCredentials():# or request.method == 'GET':
-		print 'Credentials is None'
 		if request.method == 'GET':
 			if len(request.query) == 0:
 				start_response('301 Moved', [('Location', auth.authorize_url)])
@@ -41,7 +40,7 @@ def application(environ, start_response):
 		targetCalendar = service.getCalendar(prohibitionId)
 		eventColors = targetCalendar.getEventColor()
 	except Exception, e:
-		print e
+		logger.debug(e)
 		start_response('200 OK', [('Content-type', 'text/html')])
 		return buildUI([], {},str(e).replace('<','').replace('>','') )
 
@@ -68,6 +67,13 @@ def application(environ, start_response):
 			response += u'<p>同期データ</p>'
 			response += html
 
+		if request.params.has_key('chColor'):
+			calendar = service.getCalendar( request.params.get('coldstid') )
+			count, html = calendar.changeEventColor( request.params.get('colSearchStr'), request.params.get('colorid') )
+			response += u'変更件数 ' + str(count) + u' 件 '
+			response += u'<p>変更データ</p>'
+			response += html
+
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
 			count, lastmodified, html = calendar.getCount( request.params.get('description') )
@@ -76,6 +82,7 @@ def application(environ, start_response):
 			response += u'最終更新日時(UTC)： ' + lastmodified
 			response += html
 	except Exception, e:
+		logger.debug(e)
 		exc_type, exc_value, exc_traceback = sys.exc_info()
 		traceback.extract_tb(exc_traceback)
 		response += str(e)
@@ -136,13 +143,14 @@ def buildUI(calendars, eventColors, *addHtmls):
 
 	html += u'''
 </select>
-検索文字列<input type='text' name='searchstr' />
+検索文字列<input type='text' name='colSearchStr' /><br>
 '''
 	for id, color in eventColors.iteritems():
-		html += u"<input type='radio' name='color' value='" + id + u"' /><span style='color:" + color['background'] + u"'>■</span>"
+		html += u"<input type='radio' name='colorid' value='" + id + u"' /><span style='color:" + color['background'] + u"'>■</span>"
 
 
 	html += u'''
+<br>
 <input type='submit' name='chColor' value='変更'>
 </form>
 <h2>結果</h2>
@@ -151,5 +159,5 @@ def buildUI(calendars, eventColors, *addHtmls):
 		html += addhtml
 
 	html += u'</html>'
-	print '----------------------'
+	logger.debug( '----------------------' )
 	return html.encode('utf-8')
