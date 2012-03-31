@@ -67,6 +67,14 @@ def application(environ, start_response):
 			response += u'<p>同期データ</p>'
 			response += html
 
+		if request.params.has_key('cancel'):
+			calendar = service.getCalendar( request.params.get('canceldstid') )
+			count, delcount, html = calendar.cancelDelete()
+			response += u'全体件数 ' + str(count) + u' 件 '
+			response += u'(内復活データ ' + str(delcount) + u' 件)<br>'
+			response += u'<p>復活データ</p>'
+			response += html
+
 		if request.params.has_key('chColor'):
 			calendar = service.getCalendar( request.params.get('coldstid') )
 			count, html = calendar.changeEventColor( request.params.get('colSearchStr'), request.params.get('colorid') )
@@ -154,7 +162,21 @@ def buildUI(calendars, eventColors, *addHtmls):
 	html += u'''
 <br>
 <input type='submit' name='chColor' value='変更'>
+
+<!--
+<h2>削除復活</h2>
+対象<select name='canceldstid'>
+'''
+	for calendar in calendars:
+		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
+
+	html += u'''
+</select>
+<br>
+<input type='submit' name='cancel' value='変更'>
+-->
 </form>
+
 <h2>結果</h2>
 '''
 	for addhtml in addHtmls:

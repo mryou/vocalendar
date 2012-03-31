@@ -7,10 +7,12 @@ Created on 2012/03/06
 '''
 import os
 import logging
-logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 from apiclient.discovery import build
 from apiclient.errors import HttpError
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class GCalendarService():
 
@@ -29,6 +31,7 @@ class GCalendarService():
         return []
 
     def getCalendar(self, calId):
+        logger.debug(u'getCalendar')
         logger.debug(calId)
         gcalendar = GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
         gcalendar.calendar['editable'] = ( gcalendar.getId() != self.prohibitionId )
@@ -49,17 +52,24 @@ class GCalendar():
 
     # idがあるとダメなので同期には使えない
     def create(self, event):
+        logger.debug('create')
+
+        logger.debug(event.get('id'))
+
         event.pop('id', None)
+        event.pop('iCalUID', None)
         event.pop('organizer', None)
+        event.pop('status', None)
         event['start']['timeZone']='Asia/Tokyo'
         event['end']['timeZone']='Asia/Tokyo'
 
         try:
-            self.service.events().insert(calendarId=self.getId(), body=event).execute()
+            created = self.service.events().insert(calendarId=self.getId(), body=event).execute()
             pass
         except HttpError, e:
             print e
             raise
+        return created
 
     def getEvent(self, eventid):
         try:
@@ -109,6 +119,7 @@ class GCalendar():
     def import_(self, event):
 
         target = dict(event)
+        # 同期のキーはiCalUIDなのでidは不要っぽ
         target.pop('id', None)
         target.pop('organizer', None)
         target['start']['timeZone']='Asia/Tokyo'
@@ -253,6 +264,41 @@ class GCalendar():
 #        html += u'</br>'
 #        html = u"<a href='./alldata.csv' target='_brank'>データダウンロード</a>"
 #        file.close()
+
+        return count, delcount, html
+
+    # 大量削除の対応用。
+    def cancelDelete(self):
+
+        logger.debug(u'cancelDelete')
+
+        count = 0
+        delcount = 0
+        html = u''
+        param = {
+                'showDeleted': True,
+                'updatedMin' : '2012-03-30T00:00:00.000Z'
+                }
+
+        events = self.getEvents(**param)
+        while events.has_key('items'):
+            for event in events.get('items'):
+                count += 1
+
+                if event.get('status') == 'cancelled':
+                    delcount += 1
+                    # createじゃなくてimportにするべきだった・・・orz（createrが自分になっちゃた）
+                    created = self.create(event)
+                    html += u'削除取消:' + self.toString(created)
+                    html += u'</br>'
+                    continue
+
+            page_token = events.get('nextPageToken')
+            if page_token:
+                param['pageToken'] = page_token
+                events = self.getEvents(**param)
+            else:
+                break
 
         return count, delcount, html
 
