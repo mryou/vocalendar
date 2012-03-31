@@ -317,6 +317,12 @@ class GCalendar():
         while events.has_key('items'):
             for event in events.get('items'):
 
+                logger.debug(event.get('id'))
+                logger.debug(event.get('summary'))
+
+                if event.get('summary') is None:
+                    continue
+
                 if colSearchStr in event.get('summary'):
                     count += 1
                     event['colorId'] = colorid
