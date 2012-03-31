@@ -25,7 +25,7 @@ def application(environ, start_response):
 	request = util.RequestData(environ)
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
-	if not auth.isVailedCredentials():# or request.method == 'GET':
+	if not auth.isVailedCredentials() or request.method == 'GET':
 		if request.method == 'GET':
 			if len(request.query) == 0:
 				start_response('301 Moved', [('Location', auth.authorize_url)])
@@ -76,7 +76,7 @@ def application(environ, start_response):
 
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
-			count, lastmodified, html = calendar.getCount( request.params.get('description') )
+			count, lastmodified, html = calendar.getCount( request.params.get('description'), request.params.get('onlyDelData') )
 			response += calendar.getName() + u'<br>'
 			response += u'件数 ' + str(count) + u' 件<br>'
 			response += u'最終更新日時(UTC)： ' + lastmodified
@@ -112,7 +112,8 @@ def buildUI(calendars, eventColors, *addHtmls):
 
 	html += u'''
 </select>
-<input type='checkbox' name='description' value='True' /> DLデータに詳細を含める</br>
+<input type='checkbox' id='description' name='description' value='True' /><label for='description'>DLデータに詳細を含める</label>
+<input type='checkbox' id='onlyDelData' name='onlyDelData' value='True' /><label for='onlyDelData'>削除データのみ</br></label>
 <input type='submit' name='count' value='件数取得'>
 <h2>差分同期</h2>
 <p>同期先の最終更新日時（最後に同期orインポートした時刻）より1日前のデータから同期。</p>

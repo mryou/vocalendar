@@ -138,12 +138,18 @@ class GCalendar():
         events = self.service.events().list(**param).execute()
         return events
 
-    def getCount(self, description=False):
+    def getCount(self, description=False, onlyDelData=False):
         logger.debug(u'件数カウント'.encode('utf-8'))
         logger.debug(description)
+        logger.debug(onlyDelData)
+
         count = 0
         html = u''
-        events = self.getEvents()
+        param = {
+                'showDeleted': onlyDelData
+                }
+
+        events = self.getEvents(**param)
 
         filedir = os.path.dirname(__file__)
         while not os.path.exists( os.path.join( filedir, 'index.wsgi' ) ):
@@ -151,16 +157,22 @@ class GCalendar():
 
         datafilename = self.getId() + u'.csv'
         datafile = open( os.path.join( filedir , datafilename), 'w' )
-        datafile.writelines(u'開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
+        datafile.writelines(u'ステータス\t開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
         while events.has_key('items'):
             count += len( events.get('items') )
             for event in events.get('items'):
+
+                if onlyDelData:
+                    if not event.get('status') == 'cancelled':
+                        continue
+
                 datafile.writelines( self.toCsvString(event, description).encode('utf-8') )
                 datafile.writelines( u'\n' )
 
             page_token = events.get('nextPageToken')
             if page_token:
-                events = self.getEvents(pageToken=page_token)
+                param['pageToken'] = page_token
+                events = self.getEvents(**param)
             else:
                 break
 
@@ -307,6 +319,8 @@ class GCalendar():
             summary = u'(ブランク)'
 
         csv = u''
+        csv += event.get('status')
+        csv += u'\t'
         csv += startdate
         csv += u'\t'
         csv += enddate
