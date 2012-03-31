@@ -144,6 +144,7 @@ def buildUI(calendars, eventColors, *addHtmls):
 	html += u'''
 </select>
 検索文字列<input type='text' name='colSearchStr' /><br>
+<input type='radio' name='colorid' value='' >基本色
 '''
 	for id, color in eventColors.iteritems():
 		html += u"<input type='radio' name='colorid' value='" + id + u"' /><span style='color:" + color['background'] + u"'>■</span>"
