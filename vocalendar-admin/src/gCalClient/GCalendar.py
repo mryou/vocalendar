@@ -12,7 +12,6 @@ from apiclient.discovery import build
 from apiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 class GCalendarService():
 

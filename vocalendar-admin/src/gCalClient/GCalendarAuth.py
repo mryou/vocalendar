@@ -6,6 +6,9 @@ Created on 2012/03/06
 '''
 import os
 import httplib2
+import logging
+
+logger = logging.getLogger(__name__)
 
 from oauth2client.file import Storage
 from oauth2client.client import OAuth2WebServerFlow

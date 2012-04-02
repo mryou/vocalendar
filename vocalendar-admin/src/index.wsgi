@@ -6,16 +6,24 @@ import httplib2
 import threading
 import cgi
 import urllib2
+import logging
+import cgitb
+import codecs
 
 from htmlentitydefs import codepoint2name
 
-import logging
-logger = logging.getLogger('index.wsgi')
-logger.setLevel(logging.DEBUG)
 sys.path.append(os.path.dirname(__file__))
 import gCalClient.GCalendarAuth
 import gCalClient.GCalendar
 import util
+
+# ログの設定。何故か日本語がasciiエンコーディングになる。
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+sys.stdout = codecs.getwriter('utf_8')(sys.stdout)
+sys.stderr = codecs.getwriter('utf_8')(sys.stderr)
+# 画面にTraceBackを出してくれるらしいが出ない・・・。
+cgitb.enable()
 
 prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 
@@ -40,9 +48,13 @@ def application(environ, start_response):
 		targetCalendar = service.getCalendar(prohibitionId)
 		eventColors = targetCalendar.getEventColor()
 	except Exception, e:
-		logger.debug(e)
+		type, value, tb = sys.exc_info()
+		tblist = traceback.format_exception(type, value, tb)
+		for tb in tblist:
+			logger.debug(tb)
+			response += tb
 		start_response('200 OK', [('Content-type', 'text/html')])
-		return buildUI([], {},str(e).replace('<','').replace('>','') )
+		return buildUI([], {}, response )
 
 
 	if request.method == 'GET':
@@ -84,21 +96,22 @@ def application(environ, start_response):
 
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
-			count, lastmodified, html = calendar.getCount( request.params.get('description'), request.params.get('onlyDelData') )
+			ount, lastmodified, html = calendar.getCount( request.params.get('description'), request.params.get('onlyDelData') )
 			response += calendar.getName() + u'<br>'
 			response += u'件数 ' + str(count) + u' 件<br>'
 			response += u'最終更新日時(UTC)： ' + lastmodified
 			response += html
 	except Exception, e:
-		logger.debug(e)
-		exc_type, exc_value, exc_traceback = sys.exc_info()
-		traceback.extract_tb(exc_traceback)
-		response += str(e)
-		raise
+		type, value, tb = sys.exc_info()
+		tblist = traceback.format_exception(type, value, tb)
+		for tb in tblist:
+			logger.debug(tb.encode('utf-8'))
+			response += tb
+#		raise
 
 
 	start_response('200 OK', [('Content-type', 'text/html')])
-	return buildUI(calendars, eventColors,response)
+	return buildUI(calendars, eventColors, response)
 
 def buildUI(calendars, eventColors, *addHtmls):
 
