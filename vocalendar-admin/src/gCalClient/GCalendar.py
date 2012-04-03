@@ -14,15 +14,28 @@ from apiclient.errors import HttpError
 logger = logging.getLogger(__name__)
 
 class GCalendarService():
+    '''
+        Googleカレンダーサービスを扱うクラス
+    '''
 
     def __init__( self, GCalendarAuth, prohibitionId='' ):
+        '''
+            @param GCalendarAuth: 認証情報
+            @param prohibitionId: 編集不可とするカレンダーID
+        '''
 
         self._auth = GCalendarAuth
         self.service = build(serviceName='calendar', version='v3', http=self._auth.http, developerKey=self._auth.developerKey)
         self.prohibitionId = prohibitionId
 
     def getCalendars(self):
+        '''
+            利用可能なカレンダー一覧を取得
+        '''
+
         calendars = self.service.calendarList().list().execute()
+
+        # 編集不可のカレンダーに対して、editble=falseのフラグを付与
         if 'items' in calendars:
             for calendar in calendars.get('items'):
                 calendar['editable'] = ( calendar.get('id') != self.prohibitionId )
@@ -30,6 +43,10 @@ class GCalendarService():
         return []
 
     def getCalendar(self, calId):
+        '''
+            指定されたIDのカレンダー（GCalendar)のインスタンスを取得
+        '''
+
         logger.debug(u'getCalendar')
         logger.debug(calId)
         gcalendar = GCalendar( self.service, self.service.calendars().get(calendarId=calId).execute())
@@ -38,32 +55,51 @@ class GCalendarService():
 
 
 class GCalendar():
+    '''
+        Googleカレンダーを扱うクラス
+    '''
 
     def __init__(self, service, calendar):
         self.service = service
         self.calendar = calendar
 
     def getName(self):
+        '''
+            カレンダー名称の取得
+        '''
         return self.calendar['summary']
 
     def getId(self):
+        '''
+            カレンダーIDの取得
+        '''
         return self.calendar['id']
 
     # idがあるとダメなので同期には使えない
     def create(self, event):
-        logger.debug('create')
+        '''
+            予定の登録処理
+            @param event: 予定データ（json)
+            @return: 作成された予定データ
+        '''
 
+
+        logger.debug('create')
         logger.debug(event.get('id'))
 
+        # 既存データをそのまま渡されてきたような場合に備えて不要な属性を削除する。
+        # idはもちろん、iCalUIDがあるとそこからIDを生成するので削除
         event.pop('id', None)
         event.pop('iCalUID', None)
         event.pop('organizer', None)
         event.pop('status', None)
+        # なぜかタイムゾーン情報がないとエラーになる
         event['start']['timeZone']='Asia/Tokyo'
         event['end']['timeZone']='Asia/Tokyo'
 
         try:
             created = self.service.events().insert(calendarId=self.getId(), body=event).execute()
+            # わざわざpassを入れているのはdebugで↑をコメントアウトしたときにエラーにならないように(^_^;)
             pass
         except HttpError, e:
             print e
@@ -71,6 +107,11 @@ class GCalendar():
         return created
 
     def getEvent(self, eventid):
+        '''
+            予定の取得処理
+            @param eventid: id属性
+            @return: 予定データ
+        '''
         try:
             event = self.service.events().get(calendarId=self.getId(), eventId=eventid).execute()
             # わざわざpassを入れているのはdebugで↑をコメントアウトしたときにエラーにならないように(^_^;)
@@ -85,6 +126,11 @@ class GCalendar():
         return event
 
     def getRecurringEvents(self, eventid):
+        '''
+            繰り返し予定の取得処理
+            @param eventid: id属性
+            @return: 繰り返し予定データ
+        '''
         try:
             events = self.service.events().instances(calendarId=self.getId(), eventId=eventid).execute()
             pass
@@ -97,6 +143,10 @@ class GCalendar():
         return events
 
     def update(self, event):
+        '''
+            予定の更新処理
+            @param event: 予定データ（json)
+        '''
         try:
             self.service.events().update(calendarId=self.getId(), eventId=event.get('id'), body=event).execute()
             pass
@@ -105,6 +155,10 @@ class GCalendar():
             raise
 
     def delete(self, eventid):
+        '''
+            予定の削除処理
+            @param eventid: id属性
+        '''
 
         try:
             self.service.events().delete(calendarId=self.getId(), eventId=eventid).execute()
@@ -114,11 +168,16 @@ class GCalendar():
             if not ( e.resp.status == 404 or e.resp.status == 410 ):
                 raise
 
+
     # import_なのはimportが予約後だから。
     def import_(self, event):
+        '''
+            他のカレンダーからの予定のインポート処理。
+            @param event: 予定データ（json)
+        '''
 
         target = dict(event)
-        # 同期のキーはiCalUIDなのでidは不要っぽ
+        # 同期のキーはiCalUIDなのでidは不要。むしろ邪魔
         target.pop('id', None)
         target.pop('organizer', None)
         target['start']['timeZone']='Asia/Tokyo'
@@ -128,16 +187,16 @@ class GCalendar():
             self.service.events().import_(calendarId=self.getId(), body=target).execute()
             return u'インポート:'
         except HttpError, e:
-            # not found（対象無し） or Resource has been deleted（削除済み）は
-            # The requested identifier already exists.(ID重複) or Backend Error（謎） idを削除してinsert
-            #if e.resp.status == 404 or e.resp.status == 410 or e.resp.status == 409 or e.resp.status == 503:
             print event
             print e
-            pass
             raise
 
 
     def getEvents(self, **arg):
+        '''
+            予定一覧の取得（更新順）
+            @param arg: 追加検索条件
+        '''
         param = {
                 'calendarId': self.calendar['id'],
                 'timeMin': '1970-01-01T00:00:00Z',
@@ -148,7 +207,18 @@ class GCalendar():
         events = self.service.events().list(**param).execute()
         return events
 
+    # --------------
+    # ここから下のメソッド群はGCalendarクラスにあるのは不自然な気がしてる。
+    # --------------
+
     def getCount(self, description=False, onlyDelData=False):
+        '''
+            件数一覧の取得。
+            予定データ、件数のファイル保存も実施
+            @param description: 予定データファイルに詳細情報を含めるかどうか
+            @param onlyDelData: 削除データのみ対象とする
+        '''
+
         logger.debug(u'件数カウント'.encode('utf-8'))
         logger.debug(description)
         logger.debug(onlyDelData)
@@ -159,19 +229,25 @@ class GCalendar():
                 'showDeleted': onlyDelData
                 }
 
+        # 1ページ目取得
         events = self.getEvents(**param)
 
+        # index.wsgiのあるディレクトリのファイルを保存したいので。
         filedir = os.path.dirname(__file__)
         while not os.path.exists( os.path.join( filedir, 'index.wsgi' ) ):
             filedir = os.path.split( filedir )[0]
 
+        # 件数カウントとファイル作成の処理を分けた方が良いと思うんだよね。
         datafilename = self.getId() + u'.csv'
         datafile = open( os.path.join( filedir , datafilename), 'w' )
         datafile.writelines(u'ステータス\t開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
+
         while events.has_key('items'):
             count += len( events.get('items') )
+            # 予定データを1件ずつ処理
             for event in events.get('items'):
 
+                # 削除のみの場合は削除データ以外スルー
                 if onlyDelData:
                     if not event.get('status') == 'cancelled':
                         continue
@@ -179,6 +255,7 @@ class GCalendar():
                 datafile.writelines( self.toCsvString(event, description).encode('utf-8') )
                 datafile.writelines( u'\n' )
 
+            # 次ページがあれば取得する
             page_token = events.get('nextPageToken')
             if page_token:
                 param['pageToken'] = page_token
@@ -197,6 +274,10 @@ class GCalendar():
         return count, events['updated'], html
 
     def deleteAll(self):
+        '''
+            全件削除
+            Googleの削除データの仕様がアレなので使わない方がいい
+        '''
 
         if not self.calendar.get('editable'):
             return 0, u'このカレンダーは削除できません'
@@ -220,6 +301,12 @@ class GCalendar():
         return count, html
 
     def syncTo(self, dstCalendar, syncAllData=False):
+        '''
+            予定情報の同期。
+            同期先は自分自身。同期元となったカレンダーの最終更新日より1日前のデータ以降を同期する。
+            @param dstCalendar: 同期先カレンダーインスタンス（GCalendar)
+            @param syncAllData: 1日前からの差分ではなく全件とする
+        '''
 
         count = 0
         delcount = 0
@@ -227,6 +314,8 @@ class GCalendar():
         param = {
                 'showDeleted': True
                 }
+
+        # 同期先の最終更新日から1日前の日付文字列を生成
         if not syncAllData:
             dstEvents = dstCalendar.getEvents()
             lastModifiedStr = dstEvents.get('updated').split( '.' )[0].split('Z')[0]
@@ -302,10 +391,18 @@ class GCalendar():
         return count, delcount, html
 
     def getEventColor(self ):
+        '''
+            イベントに設定できる色一覧の取得
+        '''
         result = self.service.colors().get().execute()
         return result.get('event')
 
     def changeEventColor( self, colSearchStr, colorid ):
+        '''
+            指定された文字列がsummaryにあるイベントに指定色を設定
+            @param colSearchStr: 検索文字列
+            @param colorid: カラーID
+        '''
 
         count = 0
         html = u''
@@ -399,6 +496,10 @@ class GCalendar():
         return csv
 
 class GCalEvent():
+    '''
+        Googleカレンダーのイベントを扱うクラス
+        まだ未使用。
+    '''
 
     def __init__( self, event ):
         self.event = event

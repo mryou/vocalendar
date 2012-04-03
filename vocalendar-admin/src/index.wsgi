@@ -30,9 +30,12 @@ prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 def application(environ, start_response):
 
 	logger.debug( u'----------- start ----------' )
+
+	# リクエスト前処理
 	request = util.RequestData(environ)
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
+	# 必要ならGoogleにoAuth認証を行う。
 	if not auth.isVailedCredentials() or request.method == 'GET':
 		if request.method == 'GET':
 			if len(request.query) == 0:
@@ -42,11 +45,9 @@ def application(environ, start_response):
 				auth.getAccessToken(request)
 
 	try:
+		# 有効な認証かを確認？
 		auth.authorize()
 		service = gCalClient.GCalendar.GCalendarService(auth, prohibitionId)
-		calendars = service.getCalendars()
-		targetCalendar = service.getCalendar(prohibitionId)
-		eventColors = targetCalendar.getEventColor()
 	except Exception, e:
 		type, value, tb = sys.exc_info()
 		tblist = traceback.format_exception(type, value, tb)
@@ -56,7 +57,12 @@ def application(environ, start_response):
 		start_response('200 OK', [('Content-type', 'text/html')])
 		return buildUI([], {}, response )
 
+	# 初期処理
+	calendars = service.getCalendars()
+	targetCalendar = service.getCalendar(prohibitionId)
+	eventColors = targetCalendar.getEventColor()
 
+	# 最初のアクセスは画面を生成するだけ
 	if request.method == 'GET':
 		start_response('200 OK', [('Content-type', 'text/html')])
 		return buildUI(calendars, eventColors)
@@ -96,7 +102,7 @@ def application(environ, start_response):
 
 		if request.params.has_key('count'):
 			calendar = service.getCalendar( request.params['calendarid'] )
-			ount, lastmodified, html = calendar.getCount( request.params.get('description'), request.params.get('onlyDelData') )
+			count, lastmodified, html = calendar.getCount( request.params.get('description'), request.params.get('onlyDelData') )
 			response += calendar.getName() + u'<br>'
 			response += u'件数 ' + str(count) + u' 件<br>'
 			response += u'最終更新日時(UTC)： ' + lastmodified
@@ -113,8 +119,16 @@ def application(environ, start_response):
 	start_response('200 OK', [('Content-type', 'text/html')])
 	return buildUI(calendars, eventColors, response)
 
-def buildUI(calendars, eventColors, *addHtmls):
 
+def buildUI(calendars, eventColors, *addHtmls):
+	'''
+	 画面生成処理。
+	 MVCのV
+	 @param calendars: プルダウン用カレンダー一覧
+	 @param eventColors: イベントのカラー一覧
+	 @param addHtmls: 結果表示用のHTML文字列
+
+	'''
 	html = u'''
 <!DOCTYPE html>
 <html>

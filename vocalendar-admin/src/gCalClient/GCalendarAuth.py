@@ -15,12 +15,13 @@ from oauth2client.client import OAuth2WebServerFlow
 
 class GCalendarAuth():
     '''
-    classdocs
+    Google oAuth認証を扱うクラス
     '''
 
     def __init__( self, environ ):
         '''
         Constructor
+        @param : environ Applicationのリクエストデータ
         '''
         self.flow = OAuth2WebServerFlow(
 #          client_id='1024985834463.apps.googleusercontent.com',
@@ -41,18 +42,31 @@ class GCalendarAuth():
         self.credentials = self.storage.get()
 
     def isVailedCredentials(self):
+        '''
+            保存されている認証情報が有効性を確認
+        '''
         return self.credentials is None or self.credentials.invalid == True
 
     def getAccessToken(self, request):
+        '''
+            oAuth認証ステップ2 codeからアクセストークンを取得
+            @param : request : util.RequestDataのインスタンス
+        '''
         credential = self.flow.step2_exchange(request.params['code'])
-        self.save(credential)
+        self._save(credential)
         self.credentials = credential
 
-    def save(self, credential):
-        self.storage.put(credential)
-        credential.set_store(self.storage)
-
     def authorize(self):
+        '''
+            アクセストークンで認証？
+        '''
         self.http = self.credentials.authorize(httplib2.Http())
 
+
+    def _save(self, credential):
+        '''
+            認証情報の保存
+        '''
+        self.storage.put(credential)
+        credential.set_store(self.storage)
 

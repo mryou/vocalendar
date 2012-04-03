@@ -7,15 +7,14 @@ Created on 2012/03/06
 import cgi
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 from datetime import datetime
 
 class RequestData():
     '''
     リクエストデータを扱うクラス
+    実は、cgi.FieldStrage().getValueを使った方が良いことが判明してますｗ
     '''
-
 
     def __init__(self, environ):
         '''
@@ -38,6 +37,10 @@ class RequestData():
 
 
 class DateUtil():
+    '''
+        日付に関するユーティリティー。
+        まだ未使用
+    '''
 
     def __init__(self):
         pass
