@@ -18,10 +18,15 @@ import gCalClient.GCalendar
 import util
 
 # ログの設定。何故か日本語がasciiエンコーディングになる。
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
 sys.stdout = codecs.getwriter('utf_8')(sys.stdout)
 sys.stderr = codecs.getwriter('utf_8')(sys.stderr)
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler()
+handler.setLevel(logger.getEffectiveLevel())
+formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 # 画面にTraceBackを出してくれるらしいが出ない・・・。
 cgitb.enable()
 
@@ -36,8 +41,9 @@ def application(environ, start_response):
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
 	# 必要ならGoogleにoAuth認証を行う。
-	if not auth.isVailedCredentials() or request.method == 'GET':
+	if not auth.isVailedCredentials():# or request.method == 'GET':
 		if request.method == 'GET':
+			logger.debug(len(request.query))
 			if len(request.query) == 0:
 				start_response('301 Moved', [('Location', auth.authorize_url)])
 				return ['',]
@@ -53,7 +59,7 @@ def application(environ, start_response):
 		tblist = traceback.format_exception(type, value, tb)
 		for tb in tblist:
 			logger.debug(tb)
-			response += tb
+			response = tb
 		start_response('200 OK', [('Content-type', 'text/html')])
 		return buildUI([], {}, response )
 

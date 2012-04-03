@@ -38,6 +38,7 @@ class GCalendarAuth():
         self.developerKey='AIzaSyCDSY-tykDOmhIBj4ZdSxHf1VIq7k9yvZE'
 #        self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin/')
         self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin-sub/')
+        logger.debug(self.authorize_url)
         self.storage = Storage( os.path.join(os.path.dirname(__file__), 'calendar.dat') )
         self.credentials = self.storage.get()
 
@@ -45,7 +46,7 @@ class GCalendarAuth():
         '''
             保存されている認証情報が有効性を確認
         '''
-        return self.credentials is None or self.credentials.invalid == True
+        return self.credentials is not None and not self.credentials.access_token_expired
 
     def getAccessToken(self, request):
         '''
