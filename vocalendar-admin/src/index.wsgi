@@ -113,6 +113,11 @@ def application(environ, start_response):
 			response += u'件数 ' + str(count) + u' 件<br>'
 			response += u'最終更新日時(UTC)： ' + lastmodified
 			response += html
+
+		if request.params.has_key('saveAuth'):
+			auth.save4batch()
+			response += u'保存されました。'
+
 	except Exception, e:
 		type, value, tb = sys.exc_info()
 		tblist = traceback.format_exception(type, value, tb)
@@ -195,6 +200,9 @@ def buildUI(calendars, eventColors, *addHtmls):
 	html += u'''
 <br>
 <input type='submit' name='chColor' value='変更'>
+
+<h2>バッチ用認証保存</h2>
+<input type='submit' name='saveAuth' value='保存'>
 
 <!--
 <h2>削除復活</h2>

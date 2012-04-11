@@ -18,7 +18,7 @@ class GCalendarAuth():
     Google oAuth認証を扱うクラス
     '''
 
-    def __init__( self, environ ):
+    def __init__( self, environ, batch=False ):
         '''
         Constructor
         @param : environ Applicationのリクエストデータ
@@ -29,8 +29,8 @@ class GCalendarAuth():
           client_id='269567140900.apps.googleusercontent.com',
           client_secret='_wF3RvNpRyyt2k9m4dPmjkLp',
           scope='https://www.googleapis.com/auth/calendar',
-#          user_agent='vocalendar-sync/1.0.0',
-          user_agent='vocalendar-sync-sub/1.0.0'
+#          user_agent='vocalendar-sync/1.1.0',
+          user_agent='vocalendar-sync-sub/1.1.0'
 #          approval_prompt='force'
 #          access_type='offline'
           )
@@ -39,7 +39,10 @@ class GCalendarAuth():
 #        self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin/')
         self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin-sub/')
         logger.debug(self.authorize_url)
-        self.storage = Storage( os.path.join(os.path.dirname(__file__), 'calendar.dat') )
+        if batch:
+            self.storage = Storage( os.path.join(os.path.dirname(__file__), 'batchCredential.dat') )
+        else:
+            self.storage = Storage( os.path.join(os.path.dirname(__file__), 'calendar.dat') )
         self.credentials = self.storage.get()
 
     def isVailedCredentials(self):
@@ -70,4 +73,11 @@ class GCalendarAuth():
         '''
         self.storage.put(credential)
         credential.set_store(self.storage)
+
+    def save4batch(self):
+        '''
+            バッチ用の認証情報の保存
+        '''
+        batchStorage = Storage( os.path.join(os.path.dirname(__file__), 'batchCredential.dat') )
+        batchStorage.put(self.credentials)
 
