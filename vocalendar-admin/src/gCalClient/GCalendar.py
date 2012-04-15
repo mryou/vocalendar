@@ -334,11 +334,13 @@ class GCalendar():
                 if event.get('status') == 'cancelled':
                     delcount += 1
                     dstCalendar.delete(event.get('id'))
+                    logger.debug( self.toCsvString(event) )
                     html += u'削除:' + self.toString(event)
                     html += u'</br>'
                     continue
 
                 resultstr = dstCalendar.import_(event)
+                logger.debug( self.toCsvString(event) )
                 html += resultstr + self.toString(event)
                 html += u'</br>'
 

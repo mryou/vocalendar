@@ -23,6 +23,7 @@ class GCalendarAuth():
         Constructor
         @param : environ Applicationのリクエストデータ
         '''
+        logger.debug(u'GCalendarAuth.__init__')
         self.flow = OAuth2WebServerFlow(
 #          client_id='1024985834463.apps.googleusercontent.com',
 #          client_secret='MCNVyWEAXaG9fCqXcUHWvUyC',
@@ -31,14 +32,13 @@ class GCalendarAuth():
           scope='https://www.googleapis.com/auth/calendar',
 #          user_agent='vocalendar-sync/1.1.0',
           user_agent='vocalendar-sync-sub/1.1.0'
-#          approval_prompt='force'
+#          ,approval_prompt='force'
 #          access_type='offline'
           )
 #        self.developerKey='AIzaSyDlk_D0N8F4mJIi1PvgC27jujdSAH5pJxA'
         self.developerKey='AIzaSyCDSY-tykDOmhIBj4ZdSxHf1VIq7k9yvZE'
 #        self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin/')
         self.authorize_url = self.flow.step1_get_authorize_url('http://www.ryou.bne.jp/vocalendar-admin-sub/')
-        logger.debug(self.authorize_url)
         if batch:
             self.storage = Storage( os.path.join(os.path.dirname(__file__), 'batchCredential.dat') )
         else:
@@ -62,9 +62,21 @@ class GCalendarAuth():
 
     def authorize(self):
         '''
-            アクセストークンで認証？
+            アクセストークン情報をHTTPへ付与する。
         '''
         self.http = self.credentials.authorize(httplib2.Http())
+
+    def refresh(self):
+        '''
+            リフレッシュトークンからアクセストークンを取得
+        '''
+        if ( self.credentials.refresh_token is None ):
+            logger.debug(u'No refresh_token')
+            return False
+
+        logger.debug(u'refesh')
+        self.credentials.refresh(httplib2.Http())
+        return True
 
 
     def _save(self, credential):

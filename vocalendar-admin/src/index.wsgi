@@ -10,13 +10,6 @@ import logging
 import cgitb
 import codecs
 
-from htmlentitydefs import codepoint2name
-
-sys.path.append(os.path.dirname(__file__))
-import gCalClient.GCalendarAuth
-import gCalClient.GCalendar
-import util
-
 # ログの設定。何故か日本語がasciiエンコーディングになる。
 sys.stdout = codecs.getwriter('utf_8')(sys.stdout)
 sys.stderr = codecs.getwriter('utf_8')(sys.stderr)
@@ -30,6 +23,11 @@ logger.addHandler(handler)
 # 画面にTraceBackを出してくれるらしいが出ない・・・。
 cgitb.enable()
 
+sys.path.append(os.path.dirname(__file__))
+import gCalClient.GCalendarAuth
+import gCalClient.GCalendar
+import util
+
 prohibitionId = 'pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com'
 
 def application(environ, start_response):
@@ -41,14 +39,27 @@ def application(environ, start_response):
 	auth = gCalClient.GCalendarAuth.GCalendarAuth(environ)
 
 	# 必要ならGoogleにoAuth認証を行う。
-	if not auth.isVailedCredentials():# or request.method == 'GET':
-		if request.method == 'GET':
-			logger.debug(len(request.query))
-			if len(request.query) == 0:
-				start_response('301 Moved', [('Location', auth.authorize_url)])
-				return ['',]
-			else:
-				auth.getAccessToken(request)
+
+	try:
+		refresh_result = auth.refresh()
+	except Exception, e:
+		type, value, tb = sys.exc_info()
+		tblist = traceback.format_exception(type, value, tb)
+		for tb in tblist:
+			logger.debug(tb)
+
+	logger.debug('reflesh result is ' + str( refresh_result ))
+	logger.debug('Credentials is ' + str(auth.isVailedCredentials()) )
+	if not refresh_result:
+		if not auth.isVailedCredentials():# or request.method == 'GET':
+			if request.method == 'GET':
+				logger.debug(len(request.query))
+				if len(request.query) == 0:
+					logger.debug(auth.authorize_url)
+					start_response('301 Moved', [('Location', auth.authorize_url)])
+					return ['',]
+				else:
+					auth.getAccessToken(request)
 
 	try:
 		# 有効な認証かを確認？
@@ -166,16 +177,16 @@ def buildUI(calendars, eventColors, *addHtmls):
 同期元<select name='syncsrcid'>
 '''
 	for calendar in calendars:
-		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
+		if calendar['id'] == prohibitionId:
+			html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
 	html += u'''
 </select>
 同期先<select name='syncdstid'>
 '''
 	for calendar in calendars:
-		if not calendar['editable']:
-			continue
-		html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
+		if calendar['id'] == '0mprpb041vjq02lk80vtu6ajgo@group.calendar.google.com':
+			html += u"<option value='" + calendar['id'] + u"'>" + calendar['summary'] + u"</option><br>"
 
 	html += u'''
 </select>
@@ -226,3 +237,32 @@ def buildUI(calendars, eventColors, *addHtmls):
 	html += u'</html>'
 	logger.debug( '----------------------' )
 	return html.encode('utf-8')
+
+if __name__ == "__main__":
+
+	logger.debug( '---------- batch start ------------' )
+	srcid = sys.argv[1]
+	dstid = sys.argv[2]
+
+	auth = gCalClient.GCalendarAuth.GCalendarAuth(None, True)
+
+	try:
+		auth.refresh()
+		# 有効な認証かを確認？
+		auth.authorize()
+		service = gCalClient.GCalendar.GCalendarService(auth, prohibitionId)
+	except Exception, e:
+		type, value, tb = sys.exc_info()
+		tblist = traceback.format_exception(type, value, tb)
+		for tb in tblist:
+			logger.debug(tb)
+
+	srcCalendar = service.getCalendar( srcid )
+	dstCalendar = service.getCalendar( dstid )
+	logger.debug( srcCalendar.getName() )
+	logger.debug( dstCalendar.getName() )
+
+	count, delcount, html = srcCalendar.syncTo( dstCalendar )
+	logger.debug( u'同期件数 ' + str(count) + u' 件 ')
+	logger.debug( u'(内削除データ ' + str(delcount) + u' 件)')
+	logger.debug( u'同期データ')

@@ -1,0 +1,3 @@
+#! /bin/sh
+cd /var/www/html/vocalendar-admin-sub/
+/usr/bin/python26 index.wsgi pcg8ct8ulj96ptvqhllgcc181o@group.calendar.google.com p4q6j3139qsoso0e22vbfn071k@group.calendar.google.com > sync.log 2>&1
