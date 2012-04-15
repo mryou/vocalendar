@@ -7,7 +7,7 @@ Created on 2012/03/06
 '''
 import os
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from apiclient.discovery import build
 from apiclient.errors import HttpError
 
@@ -300,7 +300,7 @@ class GCalendar():
                 break
         return count, html
 
-    def syncTo(self, dstCalendar, syncAllData=False):
+    def syncTo(self, dstCalendar, delta, syncAllData=False):
         '''
             予定情報の同期。
             同期先は自分自身。同期元となったカレンダーの最終更新日より1日前のデータ以降を同期する。
@@ -320,7 +320,7 @@ class GCalendar():
             dstEvents = dstCalendar.getEvents()
             lastModifiedStr = dstEvents.get('updated').split( '.' )[0].split('Z')[0]
             lastModified = datetime.strptime(lastModifiedStr, '%Y-%m-%dT%H:%M:%S')
-            minUpdate = lastModified - timedelta(days=1)
+            minUpdate = lastModified - delta
             minUpdateStr = minUpdate.strftime('%Y-%m-%dT%H:%M:%SZ')
             param['updatedMin'] = minUpdateStr
 

@@ -30,9 +30,9 @@ class GCalendarAuth():
           client_id='269567140900.apps.googleusercontent.com',
           client_secret='_wF3RvNpRyyt2k9m4dPmjkLp',
           scope='https://www.googleapis.com/auth/calendar',
-#          user_agent='vocalendar-sync/1.1.0',
-          user_agent='vocalendar-sync-sub/1.1.0'
-#          ,approval_prompt='force'
+#          user_agent='vocalendar-sync/1.2.0'
+          user_agent='vocalendar-sync-sub/1.2.0'
+          ,approval_prompt='force'
 #          access_type='offline'
           )
 #        self.developerKey='AIzaSyDlk_D0N8F4mJIi1PvgC27jujdSAH5pJxA'
@@ -70,7 +70,7 @@ class GCalendarAuth():
         '''
             リフレッシュトークンからアクセストークンを取得
         '''
-        if ( self.credentials.refresh_token is None ):
+        if ( self.credentials is None or self.credentials.refresh_token is None ):
             logger.debug(u'No refresh_token')
             return False
 

@@ -9,6 +9,7 @@ import urllib2
 import logging
 import cgitb
 import codecs
+from datetime import timedelta
 
 # ログの設定。何故か日本語がasciiエンコーディングになる。
 sys.stdout = codecs.getwriter('utf_8')(sys.stdout)
@@ -96,7 +97,7 @@ def application(environ, start_response):
 
 		if request.params.has_key('sync'):
 			calendar = service.getCalendar( request.params.get('syncsrcid') )
-			count, delcount, html = calendar.syncTo( service.getCalendar(request.params.get('syncdstid')), request.params.get('syncAllData') )
+			count, delcount, html = calendar.syncTo( service.getCalendar(request.params.get('syncdstid')), timedelta(days=1) ,request.params.get('syncAllData') )
 			response += u'同期件数 ' + str(count) + u' 件 '
 			response += u'(内削除データ ' + str(delcount) + u' 件)<br>'
 			response += u'<p>同期データ</p>'
@@ -262,7 +263,7 @@ if __name__ == "__main__":
 	logger.debug( srcCalendar.getName() )
 	logger.debug( dstCalendar.getName() )
 
-	count, delcount, html = srcCalendar.syncTo( dstCalendar )
+	count, delcount, html = srcCalendar.syncTo( dstCalendar, timedelta(hours=12) )
 	logger.debug( u'同期件数 ' + str(count) + u' 件 ')
 	logger.debug( u'(内削除データ ' + str(delcount) + u' 件)')
 	logger.debug( u'同期データ')
