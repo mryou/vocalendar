@@ -240,7 +240,7 @@ class GCalendar():
         # 件数カウントとファイル作成の処理を分けた方が良いと思うんだよね。
         datafilename = self.getId() + u'.csv'
         datafile = open( os.path.join( filedir , datafilename), 'w' )
-        datafile.writelines(u'ステータス\t開始日\t終了日\tID\t件名\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
+        datafile.writelines(u'ステータス\t開始日\t終了日\tID\t件名\t場所\t作成者\t作成日\t更新時間\t更新回数\t詳細\n')
 
         while events.has_key('items'):
             count += len( events.get('items') )
@@ -467,6 +467,10 @@ class GCalendar():
         summary = event.get('summary')
         if summary is None:
             summary = u'(ブランク)'
+            
+        location = event.get('location')
+        if location is None:
+        	location = u''
 
         csv = u''
         csv += event.get('status')
@@ -478,6 +482,8 @@ class GCalendar():
         csv += event.get('id')
         csv += u'\t'
         csv += summary
+        csv += u'\t'
+        csv += location
         csv += u'\t'
         csv += event.get('creator').get('email')
         csv += u'\t'
